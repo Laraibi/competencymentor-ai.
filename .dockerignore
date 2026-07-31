@@ -1,0 +1,11 @@
+**/node_modules
+**/venv
+**/__pycache__
+bloc1_ml/sample_repos
+bloc2_agent/memory_store.json
+frontend/dist
+backend/tmp
+**/.env
+**/.env.local
+.git
+.DS_Store

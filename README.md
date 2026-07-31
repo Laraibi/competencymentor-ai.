@@ -68,7 +68,50 @@ node testAgent.mock.js   # test de la logique avec un client simulé (sans rése
 
 ## 🖥️ Démo
 
-En cours de construction (`backend/`, `frontend/`) — API Node/Express + MongoDB + interface React.
+API Node/Express + MongoDB Atlas + interface React, connectées bout en bout : soumission de code → Bloc 1 (Python, sous-processus) → Bloc 2 (agent LLM) → affichage du résultat combiné.
+
+### Lancement en local (mode développement)
+
+**Prérequis** : Node.js 18+, Python 3 (venv `bloc1_ml/venv` déjà fourni avec pandas/scikit-learn/joblib), une clé API OpenAI.
+
+```bash
+# 1. Backend
+cd backend
+npm install
+cp .env.example .env   # renseigner MONGODB_URI (Atlas), OPENAI_API_KEY, PYTHON_BIN si besoin
+npm start               # démarre sur http://localhost:4000
+```
+
+```bash
+# 2. Frontend (autre terminal)
+cd frontend
+npm install
+npm run dev              # démarre sur http://localhost:5173
+```
+
+> `MONGODB_URI` est optionnelle : sans elle (ou si la connexion échoue), l'API démarre quand même et `/api/evaluate` fonctionne sans persistance — seul le CRUD compétences/briefs et l'historique nécessitent une base connectée.
+
+### Lancement avec Docker (image tout-en-un)
+
+```bash
+docker build -t competencymentor-ai .
+docker run -p 4000:4000 \
+  -e OPENAI_API_KEY=sk-... \
+  -e OPENAI_MODEL=gpt-4o-mini \
+  -e MONGODB_URI="mongodb+srv://..." \
+  competencymentor-ai
+```
+
+L'image embarque le backend, le venv Python du Bloc 1 et le build statique du frontend (servi directement par Express) : une seule commande, http://localhost:4000.
+
+### Endpoints principaux
+
+| Méthode | Route | Rôle |
+|---|---|---|
+| `POST` | `/api/evaluate` | Route centrale : Bloc 1 (prédiction ML) + Bloc 2 (agent LLM) sur un code soumis |
+| `POST` | `/api/soumissions` | Enregistre une soumission de code |
+| `GET` | `/api/evaluations/:studentName` | Historique des évaluations d'un apprenant |
+| CRUD | `/api/competences`, `/api/briefs` | Gestion du référentiel (admin) |
 
 ## 📁 Structure du dépôt
 
@@ -78,6 +121,7 @@ En cours de construction (`backend/`, `frontend/`) — API Node/Express + MongoD
 ├── bloc2_agent/          agent LLM (Node.js)
 ├── backend/             API Express + MongoDB (CRUD compétences/briefs/évaluations)
 ├── frontend/             interface React
+├── Dockerfile            image tout-en-un (backend + Bloc 1 + frontend buildé)
 └── README.md
 ```
 

@@ -1,8 +1,17 @@
 node_modules/
+venv/
 __pycache__/
 *.pyc
 .env
+.env.local
 memory_store.json
 .DS_Store
 dist/
 build/
+
+# Dépôts GitHub d'apprenants clonés pour l'entraînement/test du Bloc 1 (données réelles, non versionnées)
+bloc1_ml/sample_repos/
+
+# Fichiers temporaires écrits par POST /api/evaluate (code soumis, écrit puis nettoyé)
+backend/tmp/
+
