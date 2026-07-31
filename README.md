@@ -33,16 +33,18 @@ Le score du Bloc 1 est transmis en entrée de l'agent du Bloc 2 (`bloc1Predictio
 
 ## 📊 Données
 
-- 17 dépôts GitHub réels d'apprenants ayant réalisé le brief "Quiz statique (Front-end)" (promotion Simplon/YouCode 2025-2026), anonymisables avant tout usage externe.
-- Labels officiels récupérés depuis Simplonline (statut de validation de la compétence **C1 — Planifier le travail à effectuer individuellement**, la seule compétence relevée présentant une distribution de classes équilibrée : 8 invalidées / 9 validées).
-- Une seconde cible (**qualité CSS/UI**) est dérivée du texte libre des feedbacks formateurs.
+- 26 dépôts GitHub réels d'apprenants (17 sur le brief "Quiz statique (Front-end)" + 9 échantillons distincts supplémentaires sur "JSQuiz Advanced"), promotion Simplon/YouCode 2025-2026, anonymisables avant tout usage externe.
+- Labels officiels récupérés depuis Simplonline pour la compétence **C1 — Planifier le travail à effectuer individuellement** (distribution déséquilibrée sur les 26 échantillons : 17 validées / 9 invalidées).
+- Pas de label complet disponible pour **C2 — Développer des interfaces utilisateur** : le Bloc 1 en dérive un score de risque statistique plutôt qu'une classification (voir ci-dessous).
 
 ## 🧪 Bloc 1 — Modèle ML
 
-- **Approche** : régression logistique univariée sur `nb_js_lines` (nombre de lignes de JavaScript), après tests de plusieurs jeux de features.
-- **Résultat** : 59 % d'accuracy en validation leave-one-out (baseline hasard : 50 %).
-- **Limite assumée** : avec seulement 17 échantillons, un modèle multivarié plus complexe (Random Forest, features CSS/DOM) sur-apprend et tombe sous la baseline — ce résultat, bien que modeste, est honnête et documenté (voir `bloc1_ml/train_bloc1.py`).
-- Cette limite justifie précisément l'architecture hybride du projet : le Bloc 2 (agent) ne dépend pas d'un volume d'exemples d'entraînement pour raisonner sur une compétence, y compris une compétence entièrement nouvelle (voir "cold start" ci-dessous).
+Deux évaluations complémentaires, plus un profil technique transverse :
+
+- **C1 (Planification)** : régression logistique univariée sur `nb_js_lines`, **pondérée** (`class_weight="balanced"`) et **orientée rappel**. Sur les 26 échantillons (17 validées / 9 invalidées, baseline classe majoritaire = 0,65), l'accuracy en leave-one-out est de **0,50** — sous la baseline — mais le **rappel sur la classe Invalidée atteint 0,78** : l'objectif assumé n'est pas un verdict précis à 100 %, mais de ne rater aucun apprenant en difficulté, quitte à générer plus de faux positifs revus ensuite par le formateur. Résultats détaillés dans `bloc1_ml/train_bloc1.py`.
+- **C2 (Interfaces utilisateur)** : compétence quasi dégénérée statistiquement dans les données disponibles (un classifieur classique prédirait "validée" en permanence sans rien apprendre). Le Bloc 1 calcule donc un **score de risque** : distance moyenne, en écarts-types, à la norme des rendus validés sur les 3 features les plus discriminantes (`nb_functions`, `nb_css_rules`, `nb_addEventListener`) — un outil de triage pour le formateur, pas un verdict automatique.
+- **Profil technique transverse** : critères récurrents entre les deux briefs (organisation/modularité, documentation, interface responsive, sophistication technique JS, fonctionnalités bonus), calculés en z-score sur l'ensemble des 26 échantillons poolés. Cela donne un signal plus riche et actionnable pour l'agent (Bloc 2) que le seul statut Validée/Invalidée d'une compétence CDA (voir `bloc1_ml/technical_profile.py`).
+- **Limite assumée** : avec seulement 26 échantillons et des classes déséquilibrées, ces résultats sont indicatifs, pas définitifs — cette limite justifie précisément l'architecture hybride du projet : le Bloc 2 (agent) ne dépend pas d'un volume d'exemples d'entraînement pour raisonner sur une compétence, y compris une compétence entièrement nouvelle (voir "cold start" ci-dessous).
 
 Reproduire :
 ```bash
