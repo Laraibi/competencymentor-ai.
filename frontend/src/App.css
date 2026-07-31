@@ -1,0 +1,198 @@
+#root {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+header {
+  margin-bottom: 1.5rem;
+}
+
+header h1 {
+  margin: 0 0 0.2rem;
+  font-size: 1.8rem;
+}
+
+.muted {
+  color: #6b7280;
+}
+
+.small {
+  font-size: 0.85em;
+}
+
+nav {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+nav button {
+  background: #e5e7eb;
+  color: #1a1a1a;
+}
+
+nav button.active {
+  background: #2f6feb;
+  color: white;
+}
+
+.evaluer-layout {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(320px, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .evaluer-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 1.25rem 1.5rem;
+  margin-bottom: 1.25rem;
+  text-align: left;
+}
+
+.card h3 {
+  margin-top: 0;
+}
+
+.card-highlight {
+  border-color: #2f6feb;
+  border-width: 2px;
+}
+
+.card-warning {
+  border-color: #f59e0b;
+  background: #fffbeb;
+}
+
+form label {
+  display: block;
+  margin-bottom: 1rem;
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+form input,
+form select,
+form textarea {
+  display: block;
+  width: 100%;
+  margin-top: 0.35rem;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  font-family: inherit;
+  font-size: 0.9rem;
+  background: white;
+  color: #1a1a1a;
+}
+
+form textarea {
+  font-family: "SF Mono", Menlo, monospace;
+  font-size: 0.82rem;
+  resize: vertical;
+}
+
+.button-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+button.secondary {
+  background: #e5e7eb;
+  color: #1a1a1a;
+}
+
+button.link {
+  background: none;
+  border: none;
+  color: #2f6feb;
+  padding: 0.2em 0.5em;
+  font-size: 0.85em;
+}
+
+button.link.danger {
+  color: #dc2626;
+}
+
+.error {
+  color: #dc2626;
+  font-size: 0.9rem;
+}
+
+.metric-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #f1f1f1;
+}
+
+.metric-label {
+  flex: 1;
+  font-size: 0.9rem;
+}
+
+.metric-sub {
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.2em 0.7em;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-good {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.badge-warn {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.badge-bad {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.badge-neutral {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.feedback-apprenant {
+  font-size: 1.05rem;
+  line-height: 1.5;
+  background: #eff6ff;
+  border-radius: 8px;
+  padding: 0.9rem 1rem;
+  margin: 0.8rem 0;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 0.5rem 0.4rem;
+  border-bottom: 1px solid #f1f1f1;
+}
