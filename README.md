@@ -46,13 +46,15 @@ Deux évaluations complémentaires, plus un profil technique transverse :
 - **Profil technique transverse** : critères récurrents entre les deux briefs (organisation/modularité, documentation, interface responsive, sophistication technique JS, fonctionnalités bonus), calculés en z-score sur l'ensemble des 26 échantillons poolés. Cela donne un signal plus riche et actionnable pour l'agent (Bloc 2) que le seul statut Validée/Invalidée d'une compétence CDA (voir `bloc1_ml/technical_profile.py`).
 - **Limite assumée** : avec seulement 26 échantillons et des classes déséquilibrées, ces résultats sont indicatifs, pas définitifs — cette limite justifie précisément l'architecture hybride du projet : le Bloc 2 (agent) ne dépend pas d'un volume d'exemples d'entraînement pour raisonner sur une compétence, y compris une compétence entièrement nouvelle (voir "cold start" ci-dessous).
 
-Reproduire :
+Reproduire (le venv `bloc1_ml/venv` et les repos clonés `bloc1_ml/sample_repos/` ne sont pas versionnés — voir `.gitignore` — il faut les recréer) :
 ```bash
 cd bloc1_ml
-pip install -r requirements.txt
-python3 extract_features.py     # extrait les features des repos clonés
-python3 train_bloc1.py          # entraîne et évalue le modèle (leave-one-out)
-python3 predict_bloc1.py --repo-dir /chemin/vers/un/repo
+python3 -m venv venv                          # si pas déjà fait
+venv/bin/pip install -r requirements.txt
+./clone_sample_repos.sh                       # clone les 26 repos réels (nécessaire à extract_features.py)
+venv/bin/python3 extract_features.py          # régénère features.csv à partir des repos clonés
+venv/bin/python3 train_bloc1.py               # entraîne et évalue le modèle (leave-one-out)
+venv/bin/python3 predict_bloc1.py --repo-dir sample_repos/fouadlamrini_-JSQuizStarter
 ```
 
 ## 🤖 Bloc 2 — Agent LLM
@@ -61,11 +63,16 @@ python3 predict_bloc1.py --repo-dir /chemin/vers/un/repo
 - Reçoit en contexte la prédiction du Bloc 1 et la confronte aux critères réels.
 - Gère nativement le **cold start** : une compétence toute nouvelle, jamais entraînée, est évaluée directement par raisonnement — aucune donnée d'entraînement nécessaire.
 
-Reproduire (nécessite une clé API, voir `.env.example`) :
+Reproduire :
 ```bash
 cd bloc2_agent
 npm install
-node testAgent.mock.js   # test de la logique avec un client simulé (sans réseau)
+node testAgent.mock.js   # test de la logique avec un client simulé (sans réseau, sans clé API)
+```
+
+Test d'intégration réelle (Bloc 1 + Bloc 2 chaînés, vrai appel OpenAI — nécessite une clé API dans `bloc2_agent/.env`, voir `.env.example`, et les repos clonés via `bloc1_ml/clone_sample_repos.sh`) :
+```bash
+node testAgent.real.js fouadlamrini_-JSQuizStarter
 ```
 
 ## 🖥️ Démo
@@ -74,13 +81,13 @@ API Node/Express + MongoDB Atlas + interface React, connectées bout en bout : s
 
 ### Lancement en local (mode développement)
 
-**Prérequis** : Node.js 18+, Python 3 (venv `bloc1_ml/venv` déjà fourni avec pandas/scikit-learn/joblib), une clé API OpenAI.
+**Prérequis** : Node.js 18+, Python 3, une clé API OpenAI, un venv Python pour `bloc1_ml` avec pandas/scikit-learn/joblib installés (voir commandes ci-dessus dans la section Bloc 1 — `python3 -m venv venv && venv/bin/pip install -r bloc1_ml/requirements.txt`).
 
 ```bash
 # 1. Backend
 cd backend
 npm install
-cp .env.example .env   # renseigner MONGODB_URI (Atlas), OPENAI_API_KEY, PYTHON_BIN si besoin
+cp .env.example .env   # renseigner MONGODB_URI (Atlas), OPENAI_API_KEY ; PYTHON_BIN pointe déjà vers ../bloc1_ml/venv/bin/python3
 npm start               # démarre sur http://localhost:4000
 ```
 
@@ -97,14 +104,10 @@ npm run dev              # démarre sur http://localhost:5173
 
 ```bash
 docker build -t competencymentor-ai .
-docker run -p 4000:4000 \
-  -e OPENAI_API_KEY=sk-... \
-  -e OPENAI_MODEL=gpt-4o-mini \
-  -e MONGODB_URI="mongodb+srv://..." \
-  competencymentor-ai
+docker run -p 4000:4000 --env-file backend/.env competencymentor-ai
 ```
 
-L'image embarque le backend, le venv Python du Bloc 1 et le build statique du frontend (servi directement par Express) : une seule commande, http://localhost:4000.
+L'image embarque le backend, le venv Python du Bloc 1 (créé pendant le build) et le build statique du frontend (servi directement par Express) : une seule commande, http://localhost:4000. `--env-file backend/.env` réutilise le fichier créé à l'étape précédente (`OPENAI_API_KEY`, `OPENAI_MODEL`, `MONGODB_URI`) — pas besoin de repasser les variables une à une. `PYTHON_BIN` du `.env` reste valide dans le conteneur car `backend/` et `bloc1_ml/` y gardent la même position relative que dans le dépôt.
 
 ### Endpoints principaux
 
@@ -129,8 +132,8 @@ L'image embarque le backend, le venv Python du Bloc 1 et le build statique du fr
 
 ## ⚠️ Limites connues et roadmap
 
-- Volume de données limité (17 échantillons) — un futur travail sur davantage de briefs et de promotions permettrait un Bloc 1 plus robuste.
-- Le MVP couvre 1 brief et 1-2 compétences ; la vision plus large (CRUD compétences générique, tout référentiel) est documentée dans le cahier des charges comme trajectoire d'évolution.
+- Volume de données limité (26 échantillons, 2 briefs) — un futur travail sur davantage de briefs et de promotions permettrait un Bloc 1 plus robuste.
+- Le MVP couvre 2 briefs et 2 compétences (C1, C2) ; la vision plus large (CRUD compétences générique, tout référentiel) est documentée dans le cahier des charges comme trajectoire d'évolution.
 
 ## Auteur
 
