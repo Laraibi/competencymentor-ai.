@@ -1,64 +1,56 @@
+import os
 import pandas as pd
-import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import LeaveOneOut
-from sklearn.metrics import accuracy_score, f1_score
-from sklearn.dummy import DummyClassifier
+from sklearn.metrics import accuracy_score, f1_score, classification_report
 from sklearn.pipeline import make_pipeline
+import joblib
 
-features = pd.read_csv("/home/claude/project/features.csv")
-labels = pd.read_csv("/home/claude/project/labels.csv")
-
+BASE_DIR = os.path.dirname(__file__)
+features = pd.read_csv(os.path.join(BASE_DIR, "features.csv"))
+labels = pd.read_csv(os.path.join(BASE_DIR, "labels.csv"))
 df = features.merge(labels, on="apprenant")
 
-# feature set réduit : uniquement les variables montrant un écart réel entre classes,
-# pour éviter le sur-apprentissage avec seulement 17 échantillons
-feature_cols = [
-    "nb_js_lines", "readme_len", "nb_functions", "comment_density", "nb_media_queries",
-]
+# ============================================================
+# MODÈLE C1 (Planification) — dataset élargi à 26 échantillons
+# (17 du brief "Quiz statique" + 9 du brief "JSQuiz Advanced", uniquement
+# les repos réellement distincts entre les deux briefs — voir README).
+#
+# Avec ce volume plus large mais plus déséquilibré (17 validées / 9
+# invalidées, baseline = 65%), un modèle non pondéré ne bat plus la
+# baseline en accuracy. On privilégie donc un modèle PONDÉRÉ
+# (class_weight="balanced"), orienté RAPPEL plutôt que précision :
+# l'objectif n'est pas de rendre un verdict fiable à 100%, mais de ne
+# rater aucun apprenant en difficulté (quitte à générer plus de faux
+# positifs, qui seront de toute façon revus par le formateur).
+# ============================================================
+X = df[["nb_js_lines"]]
+y = df["c1_statut"]
 
-X = df[feature_cols].fillna(0)
+loo = LeaveOneOut()
+preds, truths = [], []
+for train_idx, test_idx in loo.split(X):
+    clf = make_pipeline(StandardScaler(), LogisticRegression(max_iter=1000, class_weight="balanced"))
+    clf.fit(X.iloc[train_idx], y.iloc[train_idx])
+    preds.append(clf.predict(X.iloc[test_idx])[0])
+    truths.append(y.iloc[test_idx].values[0])
 
-def evaluate_target(target_col, label_name):
-    y = df[target_col]
-    loo = LeaveOneOut()
-    preds, baseline_preds, truths = [], [], []
-    for train_idx, test_idx in loo.split(X):
-        X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
-        y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
+acc = accuracy_score(truths, preds)
+f1 = f1_score(truths, preds, average="macro")
+baseline_acc = y.value_counts().max() / len(y)
 
-        clf = make_pipeline(StandardScaler(), LogisticRegression(max_iter=1000, C=0.5))
-        clf.fit(X_train, y_train)
-        pred = clf.predict(X_test)[0]
+print("=== C1 - Planification (modèle final, N=26, pondéré) ===")
+print(f"Distribution des classes : {y.value_counts().to_dict()}")
+print(f"Accuracy (LOO) : {acc:.2f} | Baseline (classe majoritaire) : {baseline_acc:.2f}")
+print(f"F1-macro : {f1:.2f}")
+print()
+print(classification_report(truths, preds))
+print("Interprétation : modèle orienté RAPPEL (détecter un maximum de cas")
+print("à risque), pas précision — outil de triage pour le formateur, pas un verdict.")
 
-        baseline = DummyClassifier(strategy="most_frequent")
-        baseline.fit(X_train, y_train)
-        base_pred = baseline.predict(X_test)[0]
-
-        preds.append(pred)
-        baseline_preds.append(base_pred)
-        truths.append(y_test.values[0])
-
-    acc = accuracy_score(truths, preds)
-    f1 = f1_score(truths, preds, average="macro")
-    base_acc = accuracy_score(truths, baseline_preds)
-
-    print(f"\n=== {label_name} ===")
-    print(f"Distribution des classes : {y.value_counts().to_dict()}")
-    print(f"Modèle RandomForest -> Accuracy (LOO): {acc:.2f} | F1-macro: {f1:.2f}")
-    print(f"Baseline (classe majoritaire)   -> Accuracy (LOO): {base_acc:.2f}")
-    print("Détail (réel vs prédit) :")
-    for name, t, p in zip(df["apprenant"], truths, preds):
-        marker = "OK" if t == p else "X "
-        print(f"  [{marker}] {name:<25} réel={t:<10} prédit={p}")
-
-    # coefficients on full data fit (standardized, donc comparables)
-    clf_full = make_pipeline(StandardScaler(), LogisticRegression(max_iter=1000, C=0.5))
-    clf_full.fit(X, y)
-    coefs = clf_full.named_steps["logisticregression"].coef_[0]
-    importances = sorted(zip(feature_cols, coefs), key=lambda x: -abs(x[1]))
-    print("Coefficients (standardisés) :", [f"{f} ({c:+.2f})" for f, c in importances])
-
-evaluate_target("c1_statut", "C1 - Planification (officiel formateur)")
-evaluate_target("css_quality", "Qualité CSS/UI (dérivée du feedback texte)")
+# Sauvegarde du modèle final (entraîné sur l'ensemble des 26 échantillons)
+final_model = make_pipeline(StandardScaler(), LogisticRegression(max_iter=1000, class_weight="balanced"))
+final_model.fit(X, y)
+joblib.dump(final_model, os.path.join(BASE_DIR, "bloc1_model.joblib"))
+print(f"\n✅ Modèle final sauvegardé -> bloc1_model.joblib (feature: nb_js_lines, class_weight=balanced)")

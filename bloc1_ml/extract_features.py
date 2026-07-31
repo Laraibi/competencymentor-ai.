@@ -3,7 +3,7 @@ import re
 import csv
 import json
 
-REPOS_DIR = "/home/claude/project/repos"
+REPOS_DIR = os.environ.get("REPOS_DIR", os.path.join(os.path.dirname(__file__), "sample_repos"))
 
 # mapping folder -> apprenant (ordre confirmé identique aux deux tableaux)
 FOLDER_TO_STUDENT = {
@@ -24,6 +24,16 @@ FOLDER_TO_STUDENT = {
     "Nizarberyan_JSQuizStarter": "Nizar Beriane",
     "Ayoub-fetti_JSQuizStarter": "Ayoub Fetti",
     "Younes-imouga_JSQuizStarter": "Younes Imouga",
+    # --- Brief 2 : JSQuiz Advanced (repos distincts uniquement) ---
+    "meryemlitim_JSQuizAdvanced": "Meryem Litim (Brief2)",
+    "souadarz_JSQuizAdvanced": "Souad Arziki (Brief2)",
+    "fouadlamrini_JSQuizAdvanced": "Fouad Lamrini (Brief2)",
+    "Ibrahim_Lmlilas_JSQuizAdvanced": "Ibrahim Lmlilas (Brief2)",
+    "samirakibous_JSQuizAdvanced": "Samira Kibous (Brief2)",
+    "ElFirdaous28_JSQuizStarter2": "Firdaous El Mokhtari (Brief2)",
+    "ayoubjebb2001_JSQuizAdvanced": "Ayoub Jebbouri (Brief2)",
+    "wassim205_JSQuizStarter_V2": "Wassim El Mourabit (Brief2)",
+    "Younes_imouga_JSQuizStarter_V2": "Younes Imouga (Brief2)",
 }
 
 def read_files(root, exts):
@@ -119,7 +129,7 @@ for folder in sorted(os.listdir(REPOS_DIR)):
     if os.path.isdir(full) and not folder.startswith("."):
         rows.append(extract(folder))
 
-out_path = "/home/claude/project/features.csv"
+out_path = os.path.join(os.path.dirname(__file__), "features.csv")
 fieldnames = list(rows[0].keys())
 with open(out_path, "w", newline="", encoding="utf-8") as f:
     writer = csv.DictWriter(f, fieldnames=fieldnames)
