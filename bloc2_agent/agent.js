@@ -64,7 +64,7 @@ async function evaluateCompetence(openaiClient, { studentName, files, competence
       messages,
       tools: TOOLS,
       tool_choice: "auto",
-      response_format: turn === maxTurns - 1 ? { type: "json_object" } : undefined,
+      response_format: { type: "json_object" },
     });
 
     const choice = response.choices[0];
@@ -94,7 +94,21 @@ async function evaluateCompetence(openaiClient, { studentName, files, competence
     try {
       finalResult = JSON.parse(msg.content);
     } catch (e) {
-      finalResult = { raw: msg.content, parse_error: true };
+      // Filet de sécurité : JSON malformé malgré le mode strict -> on redemande une correction
+      messages.push({
+        role: "user",
+        content: "Le JSON précédent était invalide (erreur de syntaxe). Renvoie EXACTEMENT le même contenu, mais en JSON strictement valide (vérifie les virgules entre les champs).",
+      });
+      try {
+        const repair = await openaiClient.chat.completions.create({
+          model,
+          messages,
+          response_format: { type: "json_object" },
+        });
+        finalResult = JSON.parse(repair.choices[0].message.content);
+      } catch (e2) {
+        finalResult = { raw: msg.content, parse_error: true };
+      }
     }
     break;
   }
