@@ -60,7 +60,7 @@ export default function EvaluateForm({ onResult }) {
     onResult(null);
     try {
       const result = await api.evaluate(payload);
-      onResult(result);
+      onResult({ ...result, studentName: studentName.trim() });
     } catch (err) {
       setError(err.message);
     } finally {

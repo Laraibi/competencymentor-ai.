@@ -202,6 +202,40 @@ button.link.danger {
   margin: 0.8rem 0;
 }
 
+.search-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.35rem;
+}
+
+.search-row input {
+  margin-top: 0;
+}
+
+.history {
+  max-width: 700px;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+.history-card .metric-row {
+  border-bottom: none;
+  padding-bottom: 0.2rem;
+}
+
+.memory-indicator {
+  background: #f5f3ff;
+  color: #5b21b6;
+  border-radius: 8px;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.85rem;
+  margin: -0.5rem 0 1.25rem;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;

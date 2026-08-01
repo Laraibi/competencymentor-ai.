@@ -88,10 +88,17 @@ function Bloc2Section({ result }) {
   );
 }
 
-export default function ResultDisplay({ bloc1Prediction, bloc1Warning, bloc2Result }) {
+export default function ResultDisplay({ bloc1Prediction, bloc1Warning, bloc2Result, pastEvaluationsCount }) {
   return (
     <div className="results">
       <Bloc1Section prediction={bloc1Prediction} warning={bloc1Warning} />
+      {pastEvaluationsCount > 0 && (
+        <p className="memory-indicator">
+          🧠 {pastEvaluationsCount} évaluation{pastEvaluationsCount > 1 ? "s" : ""} précédente
+          {pastEvaluationsCount > 1 ? "s" : ""} trouvée{pastEvaluationsCount > 1 ? "s" : ""} pour cet apprenant
+          (mémoire de l'agent, outil get_past_evaluations)
+        </p>
+      )}
       <Bloc2Section result={bloc2Result} />
     </div>
   );
