@@ -81,8 +81,8 @@ async function evaluateCompetence(openaiClient, { studentName, files, competence
           result = getPastEvaluations(studentName);
         } else {
           result = { error: "unknown tool" };
-          console.log(`[Agent] Résultat de ${call.function.name}:`, JSON.stringify(result).slice(0, 300));
         }
+        console.log(`[Agent] Résultat de ${call.function.name}:`, JSON.stringify(result).slice(0, 300));
         messages.push({
           role: "tool",
           tool_call_id: call.id,
