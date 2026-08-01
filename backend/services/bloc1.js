@@ -24,31 +24,23 @@ function writeFilesToTmpDir(files) {
 }
 
 /**
- * Ecrit les fichiers dans un dossier temporaire puis appelle predict_bloc1.py
- * en sous-processus. Retourne { prediction, error } : en cas d'echec (venv
- * absent, script en erreur...), prediction est null et error contient le
- * message precis (stderr) pour debug - l'appelant continue sans bloquer
- * (cas "cold start" deja gere nativement par l'agent Bloc 2).
+ * Appelle predict_bloc1.py en sous-processus sur un dossier déjà existant
+ * (ne gère pas sa création/suppression — à la charge de l'appelant).
+ * Retourne { prediction, error } : en cas d'echec (venv absent, script en
+ * erreur...), prediction est null et error contient le message precis
+ * (stderr) pour debug - l'appelant continue sans bloquer (cas "cold start"
+ * deja gere nativement par l'agent Bloc 2).
  */
-function runBloc1Prediction(files) {
+function runBloc1PredictionOnDir(repoDir) {
   return new Promise((resolve) => {
-    let tmpDir;
-    try {
-      tmpDir = writeFilesToTmpDir(files);
-    } catch (err) {
-      resolve({ prediction: null, error: `Écriture des fichiers temporaires échouée : ${err.message}` });
-      return;
-    }
-
     const pythonBin = resolvePythonBin();
     const scriptPath = path.join(BLOC1_DIR, "predict_bloc1.py");
 
     execFile(
       pythonBin,
-      [scriptPath, "--repo-dir", tmpDir],
+      [scriptPath, "--repo-dir", repoDir],
       { cwd: BLOC1_DIR, maxBuffer: 10 * 1024 * 1024 },
       (err, stdout, stderr) => {
-        fs.rm(tmpDir, { recursive: true, force: true }, () => {});
         if (err) {
           resolve({
             prediction: null,
@@ -66,4 +58,24 @@ function runBloc1Prediction(files) {
   });
 }
 
-module.exports = { runBloc1Prediction };
+/**
+ * Ecrit les fichiers dans un dossier temporaire (créé et nettoyé ici), puis
+ * appelle predict_bloc1.py dessus. Utilisé quand le code arrive déjà sous
+ * forme de map { chemin: contenu } (soumission collée) plutôt que d'un
+ * dossier existant (repo cloné, voir runBloc1PredictionOnDir).
+ */
+async function runBloc1Prediction(files) {
+  let tmpDir;
+  try {
+    tmpDir = writeFilesToTmpDir(files);
+  } catch (err) {
+    return { prediction: null, error: `Écriture des fichiers temporaires échouée : ${err.message}` };
+  }
+  try {
+    return await runBloc1PredictionOnDir(tmpDir);
+  } finally {
+    fs.rm(tmpDir, { recursive: true, force: true }, () => {});
+  }
+}
+
+module.exports = { runBloc1Prediction, runBloc1PredictionOnDir };

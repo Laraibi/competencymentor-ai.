@@ -106,6 +106,24 @@ form textarea {
   gap: 0.5rem;
 }
 
+.source-tabs {
+  display: flex;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.tab-btn {
+  background: #f3f4f6;
+  color: #374151;
+  padding: 0.4em 0.9em;
+  font-size: 0.85rem;
+}
+
+.tab-btn.active {
+  background: #2f6feb;
+  color: white;
+}
+
 button.secondary {
   background: #e5e7eb;
   color: #1a1a1a;

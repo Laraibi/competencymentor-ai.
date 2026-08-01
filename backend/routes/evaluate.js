@@ -1,20 +1,28 @@
 const express = require("express");
+const fs = require("fs");
 const OpenAI = require("openai");
 const { isDbConnected } = require("../config/db");
 const Competence = require("../models/Competence");
 const Brief = require("../models/Brief");
 const Soumission = require("../models/Soumission");
 const Evaluation = require("../models/Evaluation");
-const { runBloc1Prediction } = require("../services/bloc1");
+const { runBloc1Prediction, runBloc1PredictionOnDir } = require("../services/bloc1");
+const { cloneRepo, loadFilesFromDir } = require("../services/repoClone");
 const { evaluateCompetence } = require("../../bloc2_agent/agent");
 
 const router = express.Router();
 
 router.post("/evaluate", async (req, res) => {
-  const { studentName, files, competenceCode, competenceDescription, briefId, briefCriteria } = req.body;
+  const { studentName, files: providedFiles, repoUrl, competenceCode, competenceDescription, briefId, briefCriteria } = req.body;
 
-  if (!studentName || !files || typeof files !== "object" || Object.keys(files).length === 0) {
-    return res.status(400).json({ error: "studentName et files (objet non vide) sont requis." });
+  if (!studentName) {
+    return res.status(400).json({ error: "studentName est requis." });
+  }
+  if (!providedFiles && !repoUrl) {
+    return res.status(400).json({ error: "files (objet non vide) ou repoUrl est requis." });
+  }
+  if (providedFiles && (typeof providedFiles !== "object" || Object.keys(providedFiles).length === 0)) {
+    return res.status(400).json({ error: "files doit être un objet non vide." });
   }
 
   let resolvedCompetenceDescription = competenceDescription;
@@ -44,50 +52,76 @@ router.post("/evaluate", async (req, res) => {
     return res.status(500).json({ error: "OPENAI_API_KEY manquante côté serveur (.env)." });
   }
 
-  const { prediction: bloc1Prediction, error: bloc1Error } = await runBloc1Prediction(files);
-  if (bloc1Error) {
-    console.warn("⚠️  Bloc 1 indisponible pour cette évaluation :", bloc1Error);
-  }
+  // Si repoUrl est fourni (sans files), on clone le repo dans un dossier
+  // temporaire dédié et on l'utilise directement comme --repo-dir pour le
+  // Bloc 1 (pas de double écriture). Sinon, comportement existant : files
+  // est déjà fourni, runBloc1Prediction gère son propre dossier temporaire.
+  let files = providedFiles;
+  let clonedDir = null;
 
-  let bloc2Result;
-  try {
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-    bloc2Result = await evaluateCompetence(client, {
-      studentName,
-      files,
-      competenceDescription: resolvedCompetenceDescription,
-      briefCriteria: resolvedBriefCriteria,
-      bloc1Prediction,
-      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-    });
-  } catch (err) {
-    return res.status(502).json({ error: `Appel à l'agent Bloc 2 échoué : ${err.message}`, bloc1Prediction });
-  }
-
-  // Persistance best-effort : ne doit jamais empêcher la démo de répondre.
-  if (isDbConnected()) {
+  if (repoUrl) {
     try {
-      const soumission = await Soumission.create({
-        studentName,
-        briefId: briefId || undefined,
-        files,
-      });
-      await Evaluation.create({
-        soumissionId: soumission._id,
-        competenceCode: resolvedCompetenceCode || "COLD_START",
-        bloc1Prediction,
-        bloc2Result,
-      });
+      clonedDir = await cloneRepo(repoUrl);
     } catch (err) {
-      console.warn("⚠️  Sauvegarde en base échouée (réponse renvoyée quand même) :", err.message);
+      return res.status(400).json({ error: err.message });
+    }
+    files = loadFilesFromDir(clonedDir);
+    if (Object.keys(files).length === 0) {
+      fs.rm(clonedDir, { recursive: true, force: true }, () => {});
+      return res.status(400).json({ error: "Aucun fichier .html/.css/.js trouvé dans le repo cloné." });
     }
   }
 
-  res.json({
-    bloc1Prediction,
-    bloc1Warning: bloc1Error || undefined,
-    bloc2Result,
-  });
+  try {
+    const { prediction: bloc1Prediction, error: bloc1Error } = clonedDir
+      ? await runBloc1PredictionOnDir(clonedDir)
+      : await runBloc1Prediction(files);
+    if (bloc1Error) {
+      console.warn("⚠️  Bloc 1 indisponible pour cette évaluation :", bloc1Error);
+    }
+
+    let bloc2Result;
+    try {
+      const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      bloc2Result = await evaluateCompetence(client, {
+        studentName,
+        files,
+        competenceDescription: resolvedCompetenceDescription,
+        briefCriteria: resolvedBriefCriteria,
+        bloc1Prediction,
+        model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+      });
+    } catch (err) {
+      return res.status(502).json({ error: `Appel à l'agent Bloc 2 échoué : ${err.message}`, bloc1Prediction });
+    }
+
+    // Persistance best-effort : ne doit jamais empêcher la démo de répondre.
+    if (isDbConnected()) {
+      try {
+        const soumission = await Soumission.create({
+          studentName,
+          briefId: briefId || undefined,
+          files,
+        });
+        await Evaluation.create({
+          soumissionId: soumission._id,
+          competenceCode: resolvedCompetenceCode || "COLD_START",
+          bloc1Prediction,
+          bloc2Result,
+        });
+      } catch (err) {
+        console.warn("⚠️  Sauvegarde en base échouée (réponse renvoyée quand même) :", err.message);
+      }
+    }
+
+    res.json({
+      bloc1Prediction,
+      bloc1Warning: bloc1Error || undefined,
+      bloc2Result,
+    });
+  } finally {
+    if (clonedDir) fs.rm(clonedDir, { recursive: true, force: true }, () => {});
+  }
 });
 
 module.exports = router;

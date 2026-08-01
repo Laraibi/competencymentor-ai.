@@ -13,7 +13,9 @@ const NEW_COMPETENCE_VALUE = "__new__";
 
 export default function EvaluateForm({ onResult }) {
   const [studentName, setStudentName] = useState("");
+  const [sourceMode, setSourceMode] = useState("paste"); // "paste" | "repo"
   const [code, setCode] = useState(EXAMPLE_TEMPLATE);
+  const [repoUrl, setRepoUrl] = useState("");
   const [competences, setCompetences] = useState([]);
   const [selectedCompetence, setSelectedCompetence] = useState("");
   const [newCompetenceText, setNewCompetenceText] = useState("");
@@ -31,15 +33,23 @@ export default function EvaluateForm({ onResult }) {
     e.preventDefault();
     setError("");
 
-    const files = parseFilesText(code);
     if (!studentName.trim()) return setError("Le nom de l'apprenant est requis.");
-    if (Object.keys(files).length === 0) return setError("Le code soumis est vide.");
     if (isColdStart && !newCompetenceText.trim()) return setError("Décris la nouvelle compétence à évaluer.");
     if (!isColdStart && !selectedCompetence) return setError("Sélectionne une compétence.");
 
+    let sourcePayload;
+    if (sourceMode === "repo") {
+      if (!repoUrl.trim()) return setError("L'URL du repo GitHub est requise.");
+      sourcePayload = { repoUrl: repoUrl.trim() };
+    } else {
+      const files = parseFilesText(code);
+      if (Object.keys(files).length === 0) return setError("Le code soumis est vide.");
+      sourcePayload = { files };
+    }
+
     const payload = {
       studentName: studentName.trim(),
-      files,
+      ...sourcePayload,
       briefCriteria,
       ...(isColdStart
         ? { competenceDescription: newCompetenceText.trim() }
@@ -67,10 +77,39 @@ export default function EvaluateForm({ onResult }) {
         <input value={studentName} onChange={(e) => setStudentName(e.target.value)} placeholder="ex. Fouad Lamrini" />
       </label>
 
-      <label>
-        Code soumis (fichiers séparés par des marqueurs <code>### nom_du_fichier</code>)
-        <textarea rows={12} value={code} onChange={(e) => setCode(e.target.value)} spellCheck={false} />
-      </label>
+      <div className="source-tabs">
+        <button
+          type="button"
+          className={sourceMode === "paste" ? "tab-btn active" : "tab-btn"}
+          onClick={() => setSourceMode("paste")}
+        >
+          Coller du code
+        </button>
+        <button
+          type="button"
+          className={sourceMode === "repo" ? "tab-btn active" : "tab-btn"}
+          onClick={() => setSourceMode("repo")}
+        >
+          Repo GitHub
+        </button>
+      </div>
+
+      {sourceMode === "paste" ? (
+        <label>
+          Code soumis (fichiers séparés par des marqueurs <code>### nom_du_fichier</code>)
+          <textarea rows={12} value={code} onChange={(e) => setCode(e.target.value)} spellCheck={false} />
+        </label>
+      ) : (
+        <label>
+          URL du repo GitHub
+          <input
+            value={repoUrl}
+            onChange={(e) => setRepoUrl(e.target.value)}
+            placeholder="https://github.com/user/repo"
+          />
+          <span className="muted small">Le dépôt est cloné côté serveur (shallow clone) puis analysé — peut prendre quelques secondes.</span>
+        </label>
+      )}
 
       <label>
         Compétence à évaluer
