@@ -73,6 +73,7 @@ async function evaluateCompetence(openaiClient, { studentName, files, competence
 
     if (msg.tool_calls && msg.tool_calls.length > 0) {
       for (const call of msg.tool_calls) {
+        console.log(`[Agent] Tour ${turn + 1} — appelle l'outil: ${call.function.name}(${call.function.arguments || "{}"})`);
         let result;
         if (call.function.name === "check_code_criteria") {
           result = checkCodeCriteria(files);
@@ -80,6 +81,7 @@ async function evaluateCompetence(openaiClient, { studentName, files, competence
           result = getPastEvaluations(studentName);
         } else {
           result = { error: "unknown tool" };
+          console.log(`[Agent] Résultat de ${call.function.name}:`, JSON.stringify(result).slice(0, 300));
         }
         messages.push({
           role: "tool",
