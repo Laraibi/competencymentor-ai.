@@ -8,6 +8,7 @@ const Soumission = require("../models/Soumission");
 const Evaluation = require("../models/Evaluation");
 const { runBloc1Prediction, runBloc1PredictionOnDir } = require("../services/bloc1");
 const { cloneRepo, loadFilesFromDir } = require("../services/repoClone");
+const { getEvaluationHistory, toAgentMemoryShape } = require("../services/evaluationHistory");
 const { evaluateCompetence } = require("../../bloc2_agent/agent");
 
 const router = express.Router();
@@ -83,6 +84,17 @@ router.post("/evaluate", async (req, res) => {
     let bloc2Result;
     try {
       const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+      // Quand MongoDB est connectée, l'agent doit voir le même historique que
+      // celui affiché dans l'app (une seule source de vérité) : on lui injecte
+      // une mémoire branchée sur la base plutôt que le fichier JSON local par
+      // défaut. addEvaluation est neutralisé ici pour ne pas doublonner
+      // l'écriture — la persistance réelle est faite juste après (Evaluation.create).
+      const memoryOverrides = isDbConnected()
+        ? {
+            getPastEvaluations: async (name) => toAgentMemoryShape(await getEvaluationHistory(name)),
+            addEvaluation: async () => {},
+          }
+        : {};
       bloc2Result = await evaluateCompetence(client, {
         studentName,
         files,
@@ -90,6 +102,7 @@ router.post("/evaluate", async (req, res) => {
         briefCriteria: resolvedBriefCriteria,
         bloc1Prediction,
         model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+        ...memoryOverrides,
       });
     } catch (err) {
       return res.status(502).json({ error: `Appel à l'agent Bloc 2 échoué : ${err.message}`, bloc1Prediction });

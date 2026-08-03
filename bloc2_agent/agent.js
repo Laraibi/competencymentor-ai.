@@ -1,5 +1,5 @@
 const { checkCodeCriteria } = require("./staticChecks");
-const { getPastEvaluations, addEvaluation } = require("./memoryStore");
+const { getPastEvaluations: defaultGetPastEvaluations, addEvaluation: defaultAddEvaluation } = require("./memoryStore");
 const { SYSTEM_PROMPT, FEW_SHOT_STYLE_EXAMPLES } = require("./prompts");
 
 const TOOLS = [
@@ -33,8 +33,23 @@ const TOOLS = [
  *        toute nouvelle créée par un formateur : le mécanisme est identique -> cold start géré nativement)
  * @param {string} params.briefCriteria - texte des critères de performance du brief
  * @param {string} [params.model="gpt-4o-mini"]
+ * @param {Function} [params.getPastEvaluations] - (studentName) => évaluations passées ;
+ *        par défaut la mémoire fichier JSON locale (memoryStore.js). Le backend injecte
+ *        une version MongoDB quand une base est connectée, pour que l'agent voie le
+ *        même historique que celui affiché dans l'app (voir routes/evaluate.js).
+ * @param {Function} [params.addEvaluation] - (studentName, résultat) => void ; idem,
+ *        surchargeable pour éviter une double persistance quand le backend s'en charge déjà.
  */
-async function evaluateCompetence(openaiClient, { studentName, files, competenceDescription, briefCriteria, bloc1Prediction = null, model = "gpt-4o-mini" }) {
+async function evaluateCompetence(openaiClient, {
+  studentName,
+  files,
+  competenceDescription,
+  briefCriteria,
+  bloc1Prediction = null,
+  model = "gpt-4o-mini",
+  getPastEvaluations = defaultGetPastEvaluations,
+  addEvaluation = defaultAddEvaluation,
+}) {
   const bloc1Context = bloc1Prediction
     ? `Prédiction du modèle ML (Bloc 1) pour cet apprenant :\n${JSON.stringify(bloc1Prediction, null, 2)}\n(Ce score est un signal statistique, pas une vérité absolue — tu dois le confronter aux critères réels du code via l'outil check_code_criteria avant de conclure.)`
     : `Aucune prédiction du Bloc 1 disponible pour cette compétence (cas "cold start" : compétence nouvelle, jamais entraînée). Base ton évaluation uniquement sur le raisonnement et les outils.`;
@@ -84,7 +99,7 @@ async function evaluateCompetence(openaiClient, { studentName, files, competence
         if (call.function.name === "check_code_criteria") {
           result = checkCodeCriteria(files);
         } else if (call.function.name === "get_past_evaluations") {
-          result = getPastEvaluations(studentName);
+          result = await getPastEvaluations(studentName);
         } else {
           result = { error: "unknown tool" };
         }
@@ -124,7 +139,7 @@ async function evaluateCompetence(openaiClient, { studentName, files, competence
   }
 
   if (finalResult && !finalResult.parse_error) {
-    addEvaluation(studentName, finalResult);
+    await addEvaluation(studentName, finalResult);
   }
 
   return finalResult;
