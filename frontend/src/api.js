@@ -19,4 +19,5 @@ export const api = {
   updateCompetence: (id, payload) => request(`/competences/${id}`, { method: "PUT", body: JSON.stringify(payload) }),
   deleteCompetence: (id) => request(`/competences/${id}`, { method: "DELETE" }),
   getEvaluations: (studentName) => request(`/evaluations/${encodeURIComponent(studentName)}`),
+  getAllEvaluations: () => request("/evaluations"),
 };

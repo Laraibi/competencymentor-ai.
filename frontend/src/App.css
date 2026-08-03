@@ -202,29 +202,12 @@ button.link.danger {
   margin: 0.8rem 0;
 }
 
-.search-row {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.35rem;
+.history-table-wrap {
+  overflow-x: auto;
 }
 
-.search-row input {
-  margin-top: 0;
-}
-
-.history {
-  max-width: 700px;
-}
-
-.history-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.history-card .metric-row {
-  border-bottom: none;
-  padding-bottom: 0.2rem;
+.history-detail-row td {
+  background: #f9fafb;
 }
 
 .memory-indicator {
