@@ -59,12 +59,18 @@ async function evaluateCompetence(openaiClient, { studentName, files, competence
   const maxTurns = 4;
 
   for (let turn = 0; turn < maxTurns; turn++) {
+    // Température basse (0.2) : on veut des évaluations cohérentes et reproductibles,
+    // pas de créativité — un même code soumis deux fois doit donner une conclusion stable.
+    // max_tokens=800 : suffisant pour un JSON de réponse (feedback + justification),
+    // évite les réponses tronquées ou excessivement longues.
     const response = await openaiClient.chat.completions.create({
       model,
       messages,
       tools: TOOLS,
       tool_choice: "auto",
       response_format: { type: "json_object" },
+      temperature: 0.2,
+      max_tokens: 800,
     });
 
     const choice = response.choices[0];
@@ -106,6 +112,8 @@ async function evaluateCompetence(openaiClient, { studentName, files, competence
           model,
           messages,
           response_format: { type: "json_object" },
+          temperature: 0.2,
+          max_tokens: 800,
         });
         finalResult = JSON.parse(repair.choices[0].message.content);
       } catch (e2) {
